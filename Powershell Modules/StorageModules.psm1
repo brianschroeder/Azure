@@ -160,3 +160,79 @@ Function Get-ContainerBlobs {
         Write-Host "Successfully Completed" -ForegroundColor Green
     }
 }
+
+Function Update-AzureBlobName {
+
+    <# 
+    .SYNOPSIS
+        Clone Provided Azure Blobs in CSV file with Source and Destination names and remove source blob after clone if specificed.
+    .PARAMETER srcContainer
+        Name of the Source Container where Blob resides.
+    .PARAMETER storageAccount
+        Name of the Source Storage Account where Blob resides.
+    .PARAMETER destContainer
+        Name of the Destination Container where Blob will be replicated.
+    .PARAMETER azureBlobManifest
+        Name of the CSV file containing the source and destination Azure URI paths.
+    .PARAMETER cloneBlob
+        Define cloning the Blob to the destination Container.
+    .PARAMETER removeSrcBlob
+        Define removing the Source Blob once the replication has been completed.
+    .EXAMPLE
+        Update-AzureBlobName -StorageAccount storageAccount -srcContainer srcContainer -destContainer destContainer -AzureBlobManifest Azure-BlobMigration.csv -cloneBlob
+    .EXAMPLE
+        Update-AzureBlobName -StorageAccount storageAccount -srcContainer srcContainer -destContainer destContainer -AzureBlobManifest Azure-BlobMigration.csv -cloneBlob -removeSrcBlob
+    .NOTES
+        Author: Brian Schroeder
+        Date Coded: 08/15/2021
+    #>
+
+    param (
+
+        [String] $srcContainer = 'srcContainer',
+        [String] $storageAccount = 'storageAccount',
+        [String] $destContainer = 'destContainer',
+        [String] $azureBlobManifest = 'Azure-BlobMigration.csv',
+        [Switch] $cloneBlob,
+        [Switch] $removeSrcBlob
+    )
+
+    foreach ($blob in Get-Content $azureBlobManifest) {
+
+        $sourceBlob = ($blob -split ',')[0] -replace "https://$($StorageAccount).blob.core.windows.net/$($srcContainer)/"
+        $destinationBlob = ($blob -split ',')[1] -replace "https://$($StorageAccount).blob.core.windows.net/$($destContainer)/"
+        $context = New-AzStorageContext -StorageAccountName "$StorageAccount"
+
+        # Clone Blob to Specified Destination
+        if ($cloneBlob) {
+
+            try {
+                "Cloning:" 
+                Write-Host "Source: $srcContainer/$sourceBlob"  
+                Write-Host "Destination: $destContainer/$destinationBlob"
+                Start-AzStorageBlobCopy -SrcBlob "$sourceBlob" -SrcContainer "$srcContainer" -DestContainer "$destContainer" -DestBlob "$destinationBlob" -context $context -Force | Out-Null
+                Write-Host "Successfully Cloned" -foregroundcolor Green
+                '===================================================================='
+            }
+
+
+            catch { Write-Host `n"Failed Cloning" -foregroundcolor yellow ; $_ ; '===================================================================='}
+        }
+
+        if ($removeSrcBlob -and !$cloneBlob) { Write-Host 'Warning: Blobs must be cloned before removing the Source Blob. Pass the -CloneBlob Switch.' -foregroundcolor yellow ; break }
+
+        # Remove Blob from Source After Blob Clone
+        if ($removeSrcBlob -and $cloneBlob) {
+
+            try {
+                "Removing:" 
+                Write-Host "Source: $srcContainer/$sourceBlob"  
+                Remove-AzStorageBlob -Blob "$sourceBlob" -Container "$srcContainer" -context $context -Force | Out-Null
+                Write-Host "Successfully Removed" -foregroundcolor Green
+                '===================================================================='
+            }
+
+            catch { Write-Host `n"Failed Removing" -foregroundcolor yellow ; $_ ; '===================================================================='}
+        }
+    }
+}
