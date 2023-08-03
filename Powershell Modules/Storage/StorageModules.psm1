@@ -1,3 +1,110 @@
+function Invoke-BlobRehydrationManagement {
+
+    <#
+    .SYNOPSIS
+    This PowerShell function assists in managing Azure blob rehydration.
+    
+    .DESCRIPTION
+    Invoke-BlobRehydrationManagement checks whether the blobs specified in a file are in 'Archive' state, 
+    and provides visibility on their rehydration status if they are. 
+    If specified, it can initiate rehydration of archived blobs.
+    
+    .PARAMETER StorageAccountName
+    The name of the Azure storage account containing the archived blobs.
+    
+    .PARAMETER ContainerName
+    The name of the Azure storage container containing the archived blobs.
+    
+    .PARAMETER BlobNamesFile
+    The path to the file containing the names of the blobs to be processed.
+    
+    .PARAMETER CheckBlobTier
+    Specifies whether the function should check the blob's tier.
+    
+    .PARAMETER CheckArchiveStatus
+    Specifies whether the function should check the blob's archive status.
+    
+    .PARAMETER ChangeTier
+    Specifies whether the function should change the blob's tier if it's in 'Archive' state.
+    
+    .NOTES
+    This function uses the Azure PowerShell module and requires Azure credentials with permissions 
+    to read the blobs from the specified storage account and container, and change their tier if specified.
+    
+    .EXAMPLE
+    Invoke-BlobRehydrationManagement -StorageAccountName 'YourStorageAccount' -ContainerName 'YourContainer' -BlobNamesFile 'C:\path\to\blobnames.txt' -CheckBlobTier $true -CheckArchiveStatus $true -ChangeTier $false
+    This command checks the tier of each blob named in 'blobnames.txt', checks their rehydration status if they are archived, 
+    and generates reports in the 'reports' directory in the current path. It does not initiate rehydration of the blobs because the '-ChangeTier' parameter is set to $false.
+    
+    #>
+    
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]$StorageAccountName,
+    
+        [Parameter(Mandatory=$true)]
+        [string]$ContainerName,
+    
+        [Parameter(Mandatory=$true)]
+        [string]$BlobNamesFile,
+    
+        [Parameter(Mandatory=$false)]
+        [bool]$CheckBlobTier = $true,
+    
+        [Parameter(Mandatory=$false)]
+        [bool]$CheckArchiveStatus = $true,
+    
+        [Parameter(Mandatory=$false)]
+        [bool]$ChangeTier = $false
+    )
+
+    # Import Azure module
+    Import-Module Az
+
+    # Get the storage account context
+    $context = New-AzStorageContext -StorageAccountName $StorageAccountName
+
+    # Read the blob names from the file
+    $blobNames = Get-Content $BlobNamesFile
+
+    # Ensure Reports folder exists and create if not present
+    if (!(Test-Path -Path ".\reports")) {
+        New-Item -ItemType Directory -Force -Path ".\reports"
+    }
+
+    # Cleanup report folder 
+    Remove-Item -Recurse '.\reports\*' -Force
+
+    # Process each blob
+    foreach($blobName in $blobNames)
+    {
+        $blob = Get-AzStorageBlob -Context $context -Container $ContainerName -Blob $blobName -ErrorAction SilentlyContinue
+
+        if ($blob -ne $null) {
+            if ($CheckBlobTier) {
+                if ($blob.AccessTier -eq 'Archive') {
+                    Add-Content -Path 'reports\archived_blobs.txt' -Value "Blob $blobName is currently in archive"
+
+                    if ($CheckArchiveStatus) {
+                        if ($blob.BlobProperties.ArchiveStatus -eq 'rehydrate-pending-to-hot') {
+                            Add-Content -Path 'reports\active_rehydrating_blobs.txt' -Value "Blob $blobName is currently rehydrating to hot."
+                        } elseif ($ChangeTier) {
+                            $blob.ICloudBlob.SetStandardBlobTier('Hot')
+                            Add-Content -Path 'reports\rehydrating_blobs_initiated.txt' -Value "Blob $blobName initiated rehdration from archive to hot."
+                        }
+                    }
+                } else {
+                    Add-Content -Path 'reports\hot_blobs.txt' -Value "Blob $blobName is currently in hot"
+                }
+            }
+        } else {
+            # Blob does not exist, write to the output file
+            Add-Content -Path 'reports\blobs_not_found.txt'-Value "Blob $blobName does not exist"
+        }
+    }
+}
+
 Function Confirm-AzureStorageBlob {
 
     <#
