@@ -1,5 +1,4 @@
-function Invoke-BlobRehydrationManagement {
-
+Function Invoke-BlobRehydrationManagement {
     <#
     .SYNOPSIS
     This PowerShell function assists in managing Azure blob rehydration.
