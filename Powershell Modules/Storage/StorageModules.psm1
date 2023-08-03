@@ -19,9 +19,9 @@ Function Confirm-AzureStorageBlob {
     .PARAMETER replicate
         Define whether to replicate all Blobs not found in the Destination Container that exist on the Source Container.
     .EXAMPLE
-        Confirm-AzureStorageBlob -sourceStorageAccount stmambridgemam2086 -sourceStorageContainer qa-normal-flow -destinationStorageAccount nbaqamediaingest01 -destinationStorageContainer qa-normal-flow -sourcePath "folder1/" -destinationPath "folder2/"
+        Confirm-AzureStorageBlob -sourceStorageAccount srcStorageaccount -sourceStorageContainer srcContainer -destinationStorageAccount destStorageaccount -destinationStorageContainer destContainer -sourcePath "folder1/" -destinationPath "folder2/"
     .EXAMPLE
-        Confirm-AzureStorageBlob -sourceStorageAccount stmambridgemam2086 -sourceStorageContainer qa-normal-flow -destinationStorageAccount nbaqamediaingest01 -destinationStorageContainer qa-normal-flow -sourcePath "folder1/" -destinationPath "folder2/" -replicate
+        Confirm-AzureStorageBlob -sourceStorageAccount srcStorageaccount -sourceStorageContainer srcContainer -destinationStorageAccount destStorageaccount -destinationStorageContainer destContainer -sourcePath "folder1/" -destinationPath "folder2/" -replicate
 
     .NOTES
         Author: Brian Schroeder
@@ -107,17 +107,17 @@ Function Get-ContainerBlobs {
     .PARAMETER exportCSV
         Define downloading CSV with Blob information.
     .EXAMPLE
-        Get-ContainerBlobs -containerName migration -storageAccount stmaminputmam1776 -outFileName MAM-MigrationContainer-Blobs.csv -exportCSV
+        Get-ContainerBlobs -containerName container -storageAccount storageaccount -outFileName MAM-MigrationContainer-Blobs.csv -exportCSV
     .EXAMPLE
-        Get-ContainerBlobs -containerName migration -storageAccount stmaminputmam1776
+        Get-ContainerBlobs -containerName container-storageAccount storageaccount
     .NOTES
         Author: Brian Schroeder
         Date Coded: 08/15/2021
     #>
     
     param (
-        [string] $containerName = "migration",
-        [string] $storageAccount = 'stmaminputmam1776',
+        [string] $containerName = "container",
+        [string] $storageAccount = 'storageaccount',
         [string] $outFileName = "MAM-MigrationContainer-Blobs.csv",
         [switch] $exportCSV,
         [switch] $download
